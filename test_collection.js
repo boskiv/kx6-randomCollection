@@ -4,6 +4,9 @@ const collectionPath = 'collections';
 export default function () {
 
     collection.createCollection('./collections')
-    let data = collection.getRandomItem()
-    console.log(JSON.stringify(data))
+    let item = collection.getRandomItem()
+    console.log(JSON.stringify(item))
+
+    let formData = collection.getRandomFormData()
+    console.log(JSON.stringify(formData))
 }

@@ -1,12 +1,14 @@
 package collection
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"go.k6.io/k6/js/modules"
 	"io/fs"
 	"log"
 	"math/rand"
+	"mime/multipart"
 	"os"
 	"path/filepath"
 )
@@ -69,6 +71,16 @@ func (c *COLLECTION) GetRandomItem() Object {
 	return c.items[key]
 }
 
+func (c *COLLECTION) GetRandomFormData() string {
+	key := randMapKey(c.items)
+	c.fillData(c.items[key])
+	result, err := getFormData(c.items[key])
+	if err != nil {
+		return ""
+	}
+	return result
+}
+
 func (c *COLLECTION) fillData(o Object) {
 	collectionJSON, err := json.MarshalIndent(o, "", "  ")
 	if err != nil {
@@ -92,4 +104,33 @@ func randMapKey(m map[string]Object) string {
 		mapKeys = append(mapKeys, key)
 	}
 	return mapKeys[rand.Intn(len(mapKeys))]
+}
+
+func getFormData(o Object) (string, error) {
+	// Create buffer
+	buf := new(bytes.Buffer) // caveat IMO dont use this for large files, \
+	// create a tmpfile and assemble your multipart from there (not tested)
+	w := multipart.NewWriter(buf)
+	// Create a form field writer for field label
+	label, err := w.CreateFormField("Name")
+	if err != nil {
+		return "", err
+	}
+	// Write label field
+	label.Write([]byte(o.Name))
+	// Create a form field writer for field summary
+
+	// Create file field
+	for _, v := range o.ObjectContents {
+		fw, err := w.CreateFormFile(v.Name, v.Name)
+		if err != nil {
+			return "", err
+		}
+		fw.Write(v.Data)
+	}
+	// Important if you do not close the multipart writer you will not have a
+	// terminating boundry
+	w.Close()
+
+	return string(buf.Bytes()), nil
 }
